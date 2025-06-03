@@ -31,8 +31,8 @@ for outlier_id in outliers_ids:
     plot_sample(sample(df, outlier_id), unit="min")
 
 # %%
-minutes = 5
-time_inactivity = 60 * minutes
+MINUTES = 2
+time_inactivity = 60 * MINUTES
 df["time_from_session_start"] = df["time"] - df.groupby("visitor_id")["time"].transform(
     "min"
 )
@@ -57,8 +57,7 @@ plt.show()
 sns.histplot(trimmed_df["time_between_action"])
 plt.show()
 # %%
+trimmed_df.drop(columns="inactive", inplace=True)
 trimmed_df.to_csv(
-    f"data/Log_Interaction_Survey_Inactivity_{minutes}min.csv", index=False
+    f"data/Log_Interaction_Survey_Inactivity_{MINUTES}min.csv", index=False
 )
-
-# %%
