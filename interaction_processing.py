@@ -9,7 +9,7 @@ from utils import extract_id_files, load_json_files, load_yaml
 
 # %%
 ########### Load and Process
-data_dir = Path("../data/LogsBergenBelsen")
+data_dir = Path("../data/Bergen-Belsen-Panel6/LogsBergenBelsen")
 pattern = "Log_Interactions*.json"  # Survey files pattern
 output_directory = Path("data/")
 output_filename = "Log_Interaction.csv"
