@@ -381,12 +381,52 @@ def remove_before_or_after_action(
             else:
                 result = group[group['time'] < ref_time]
 
+        if include:
+            at_ref_time = result['time'] == ref_time
+            not_target_action = result['action'] != action
+            # rows that are exactly at ref_time but not the target action
+            mask_bad_same_time = at_ref_time & not_target_action
+            # drop them
+            result = result[~mask_bad_same_time]
+
         return result
 
     except Exception as e:
         print(f"Error in remove_before_or_after_action: {e}")
         return group
     
+def add_synthetic_event(
+    group: pd.DataFrame,
+    action: str,
+    where: ActionWhich
+) -> pd.DataFrame:
+    
+    if (group["action"] == action).any():
+        return group
+
+    if where == "first":
+        ref_time = group["time"].min()
+    else:
+        ref_time = group["time"].max()
+
+    visitor_id = group['visitor_id'].iloc[0]
+    # build the synthetic row
+    synth_row = {
+        **{col: None for col in group.columns},  # default None for all cols
+        "visitor_id": visitor_id,
+        "action": action,
+        "time": ref_time,
+    }
+    synth_df = pd.DataFrame([synth_row])
+
+    if where == "first":
+        # put synthetic row first
+        group = pd.concat([synth_df, group], ignore_index=True)
+    else:
+        # put synthetic row last
+        group = pd.concat([group, synth_df], ignore_index=True)
+    return group
+
 ### RAW VISUALIZATION
 # CATEGORIZE ACTIONS
 regex_category_map = {
@@ -509,3 +549,33 @@ def generate_scrollable_html_report(
     return output_path
 
 # HMTL REPORT
+
+
+### Interaction Processing
+def load_cache(path: str):
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_cache(cache, path: str):
+    with open(path, "w") as f:
+        json.dump(cache, f)
+
+
+### DEBUG
+
+def num_start_end(df, verbose=True):
+    # know ehter each visitor has start end, and ends are not duplicated
+    start_event = 'Button_close_Instructions'
+    end_event = 'Finish_virtualNavigation'
+
+    start_num = df[df['action'] == start_event]['visitor_id'].nunique()
+    start_num_tot = df[df['action'] == start_event].shape[0]
+
+    end_num = df[df['action'] == end_event]['visitor_id'].nunique()
+    end_num_tot = df[df['action'] == end_event].shape[0]
+
+    if verbose:
+        print(f"Number of start events: {start_num}, {start_num_tot}")
+        print(f"Number of close events: {end_num}, {end_num_tot}")

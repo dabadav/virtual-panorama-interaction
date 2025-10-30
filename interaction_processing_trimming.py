@@ -4,14 +4,14 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-
+    
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from pathlib import Path
 
 sys.path.append("..")
-from utils import extract_id_files, load_json_files, load_yaml
+from utils import extract_id_files, load_json_files, load_yaml, num_start_end
 
 SAVE_DATA = True
 
@@ -42,6 +42,12 @@ if SAVE_DATA:
 # Remove Interactions corresponding to test files
 test_ids = ['1744809723872', '1744015598515', '1733218842453', '1745332528203', '1744015689042', '1744896993937', '1744810157841', '1744897044784', '1742912285792', '1744899341160', '1745335256765', '1744899669470',       '1744896736038', '1744810101012', '1744810778970']
 df_interaction = df_interaction[~df_interaction['visitor_id'].isin(test_ids)]
+df_interaction["time"] = pd.to_numeric(df_interaction["time"], errors='coerce')
+
+print(f"Number visitor_ids: {df_interaction['visitor_id'].nunique()}")
+print(f"Number events: {df_interaction.shape[0]}")
+num_start_end(df_interaction)
+
 
 # %%
 ########### Remove before start signal and after end signal
@@ -56,8 +62,7 @@ df_clean = df_result.groupby('visitor_id', group_keys=False).apply(remove_before
 
 print(f"Number visitor_ids: {df_clean['visitor_id'].nunique()}")
 print(f"Number events: {df_clean.shape[0]}")
-
-
+num_start_end(df_clean)
 # %%
 ########### Remove: if no end signal then trim after N minutes inactivity
 from utils import remove_inactivity
@@ -72,16 +77,24 @@ df["time_from_session_start"] = df["time"] - df.groupby("visitor_id")["time"].tr
 df["time_between_action"] = df.groupby("visitor_id")["time"].diff().fillna(0)
 df["inactive"] = df["time_between_action"] >= time_inactivity
 affected_visitors = df[df["inactive"]]["visitor_id"].unique()
+num_start_end(df)
 
 # Apply per user
 trimmed_df = df.groupby("visitor_id", group_keys=False).apply(remove_inactivity)
 print(f"Number visitor_ids: {trimmed_df['visitor_id'].nunique()}")
 print(f"Number events: {trimmed_df.shape[0]}")
+num_start_end(trimmed_df)
+
+# %%
+######### Add synthetic end signal to flag session end
+from utils import add_synthetic_event
+df_final = trimmed_df.groupby('visitor_id', group_keys=False).apply(add_synthetic_event, action=end_signal, where='last')
+num_start_end(df_final)
 
 # %%
 ########### Save results
-trimmed_df = trimmed_df[["visitor_id", "action", "positionScreen", "time", "time_from_session_start", "time_between_action"]]
-trimmed_df.to_csv(
+df_final = df_final[["visitor_id", "action", "positionScreen", "time", "time_from_session_start", "time_between_action"]]
+df_final.to_csv(
     f"data/Log_Interaction_Inactivity_{MINUTES}min.csv", index=False
 )
 # %%

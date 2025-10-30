@@ -7,7 +7,7 @@ import seaborn as sns
 import scikit_posthocs as sp
 import itertools
 
-df = pd.read_csv('data/Log_Interaction_Survey_Inactivity_2min_Clean_NoFinish.csv')
+df = pd.read_csv('data/Log_Interaction_Inactivity_2min.csv')
 df_survey = pd.read_csv("data/Log_Survey_Persona.csv", index_col=0)
 df_survey.reset_index(names="visitor_id", inplace=True)
 # df_survey = df_survey[df_survey['profile'] != 'Researcher']
